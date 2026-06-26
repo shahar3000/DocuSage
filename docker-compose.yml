@@ -50,6 +50,9 @@ services:
     environment:
       - DOCLING_SERVE_HOST=0.0.0.0
       - DOCLING_SERVE_PORT=5001
+      # CPU parsing of a manual can take minutes; the default 120s sync wait is too low
+      # and causes upload timeouts. Allow up to 30 minutes per document.
+      - DOCLING_SERVE_MAX_SYNC_WAIT=1800
     volumes:
       - ${DATA_DIR:-./data}/docling:/app/data
     expose:
@@ -78,6 +81,9 @@ services:
       # --- RAG: layout-aware document extraction via Docling ---
       - CONTENT_EXTRACTION_ENGINE=docling
       - DOCLING_SERVER_URL=http://docling:5001
+      # Auto-OCR: digital/text PDFs use their text layer (fast); only image/scanned pages
+      # are OCR'd. For an all-digital manual set, set "do_ocr": false for ~10x faster ingest.
+      - 'DOCLING_PARAMS={"do_ocr": true, "force_ocr": false}'
 
       # --- Chunking tuned for technical manuals ---
       - CHUNK_SIZE=1000
