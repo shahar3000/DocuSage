@@ -1,0 +1,5 @@
+# Local settings written by install.sh
+.env
+
+# Models, accounts, and uploaded manuals
+/data/

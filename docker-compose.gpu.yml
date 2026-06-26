@@ -1,0 +1,15 @@
+# GPU override — layered on top of docker-compose.yml to give Ollama access to an
+# NVIDIA GPU. install.sh adds this file automatically when you answer "yes" to the GPU
+# prompt. Requires the NVIDIA Container Toolkit on the host (install.sh checks for it).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

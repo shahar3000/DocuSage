@@ -1,0 +1,101 @@
+# DocuSage — self-hosted RAG over PDF user manuals.
+# Everything is pre-configured here via environment variables: the stack comes up
+# fully working with no admin-UI configuration step. Settings come from .env
+# (written by install.sh). Bring up with:  docker compose up -d
+#
+# GPU acceleration is added by layering docker-compose.gpu.yml on top:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# install.sh does this automatically when you answer "yes" to the GPU prompt.
+
+services:
+  # Local model runtime — serves both the chat model and the embedding model.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: docusage-ollama
+    restart: unless-stopped
+    volumes:
+      - ${DATA_DIR:-./data}/ollama:/root/.ollama
+    # Not published to the host by default — only Open WebUI (same network) talks to it.
+    expose:
+      - "11434"
+
+  # One-shot: waits for Ollama, pulls the embedding + generation models, then exits 0.
+  # This is what makes the install "zero manual model pulling".
+  model-init:
+    image: ollama/ollama:latest
+    container_name: docusage-model-init
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Waiting for Ollama to be ready...";
+        until ollama list >/dev/null 2>&1; do sleep 2; done;
+        echo "Pulling embedding model: ${EMBEDDING_MODEL}";
+        ollama pull "${EMBEDDING_MODEL}";
+        echo "Pulling generation model: ${GENERATION_MODEL}";
+        ollama pull "${GENERATION_MODEL}";
+        echo "All models ready.";
+    restart: "no"
+
+  # Layout-aware PDF parser (tables, multi-column, figures). CPU image — adequate for
+  # the corpus sizes here and avoids GPU/CUDA dependencies on the parser.
+  docling:
+    image: quay.io/docling-project/docling-serve-cpu:latest
+    container_name: docusage-docling
+    restart: unless-stopped
+    environment:
+      - DOCLING_SERVE_HOST=0.0.0.0
+      - DOCLING_SERVE_PORT=5001
+    volumes:
+      - ${DATA_DIR:-./data}/docling:/app/data
+    expose:
+      - "5001"
+
+  # Team-facing chat UI + RAG. Fully configured via env vars — no admin-panel setup needed.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: docusage-open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+      - docling
+    ports:
+      - "${WEBUI_PORT:-3000}:8080"
+    environment:
+      # --- Connect to the local Ollama for chat + embeddings ---
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DEFAULT_MODELS=${GENERATION_MODEL}
+
+      # --- RAG: embeddings served by Ollama ---
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - RAG_OLLAMA_BASE_URL=http://ollama:11434
+
+      # --- RAG: layout-aware document extraction via Docling ---
+      - CONTENT_EXTRACTION_ENGINE=docling
+      - DOCLING_SERVER_URL=http://docling:5001
+
+      # --- Chunking tuned for technical manuals ---
+      - CHUNK_SIZE=1000
+      - CHUNK_OVERLAP=150
+
+      # Hybrid search is left OFF in the baseline: it needs a reranker model that
+      # downloads on first query and can fail on an offline/locked-down host. Turn it
+      # on later (see README) once a reranker is in place.
+      - ENABLE_RAG_HYBRID_SEARCH=false
+
+      # --- Auth: admin-managed users ---
+      # First account created in the browser becomes the admin. New signups land as
+      # "pending" (no access) until the admin activates them, so access is admin-gated
+      # out of the box. To fully disable self-signup, flip the toggle in
+      # Admin Panel -> Settings -> General, or set ENABLE_SIGNUP=false in .env.
+      - WEBUI_AUTH=true
+      - ENABLE_SIGNUP=${ENABLE_SIGNUP:-true}
+      - DEFAULT_USER_ROLE=pending
+      - WEBUI_NAME=${WEBUI_NAME:-DocuSage}
+    volumes:
+      - ${DATA_DIR:-./data}/open-webui:/app/backend/data
