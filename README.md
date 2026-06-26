@@ -13,38 +13,64 @@ It bundles three containers, pre-wired so there's nothing to configure:
 
 ---
 
-## Install (one command)
+## Setup — step by step
 
-On a **Linux** machine:
+You need a **Linux machine** (a physical box, a VM, or a cloud server). These steps take it
+from nothing to a working DocuSage. Copy and paste each block into a terminal.
+
+**1. Open a terminal on the Linux machine.**
+
+**2. Download DocuSage** (this also installs `git` if it isn't already there):
+
+```bash
+sudo apt update && sudo apt install -y git
+git clone https://github.com/shahar3000/DocuSage.git
+cd DocuSage
+```
+
+> On Ubuntu/Debian the commands above work as-is. On other Linux families, install `git`
+> with that system's package manager (e.g. `sudo dnf install -y git`), then run the same
+> `git clone` and `cd` lines.
+
+**3. Run the installer:**
 
 ```bash
 ./install.sh
 ```
 
-It asks three things (just press Enter for the defaults):
+- It may ask for **your password** the first time — that's it installing Docker. Normal.
+- Then it asks **three questions**. Just **press Enter** for each default, or:
+  1. **Use GPU acceleration?** — type `y` if the machine has an NVIDIA GPU, otherwise `n`.
+  2. **Port for the web interface?** — `3000` is fine.
+  3. **Where to store data?** — `./data` is fine.
 
-1. **Use GPU acceleration?** — defaults to yes if an NVIDIA GPU is found, otherwise CPU.
-2. **Web UI port?** — default `3000`.
-3. **Where to store data?** — default `./data`.
+> If you get `permission denied`, run `chmod +x install.sh` once, then `./install.sh` again.
 
-Then it installs Docker if needed, starts everything, downloads the models (a few minutes
-the first time), and prints the URL to open. That's it.
+**4. Wait for it to finish.** The first run downloads several gigabytes (the software images
+plus the AI models), so it can take **10–20 minutes**. When it's done it prints a link like:
 
-> The only prerequisite the installer can't do for you on every distro is a running Docker
-> daemon — it will install Docker via the official script, but you may need to start it
-> (`sudo systemctl start docker`) if your system doesn't auto-start services.
+```
+On this machine : http://localhost:3000
+From the team   : http://192.168.x.x:3000
+```
+
+**5. Open that link in a web browser.** Use the `localhost` link on the machine itself, or
+the `192.168.x.x` link from another computer on the same network.
+
+**6. Create the first account.** The **first** person to sign up automatically becomes the
+**admin**. Continue with the next sections to add your team and your manuals.
 
 ---
 
-## First-time setup in the browser
+## Add your team (admin)
 
-1. Open the printed URL. **The first account you create becomes the admin.**
-2. Register your team: go to **Admin Panel → Users → ➕ Add User** and create an account
-   for each person.
-   - New self-signups are held as **pending** (no access) until you activate them, so
-     access is admin-controlled out of the box.
-   - To turn off self-signup entirely: **Admin Panel → Settings → General → disable new
-     sign-ups** (or set `ENABLE_SIGNUP=false` in `.env` and run `docker compose up -d`).
+Once you're logged in as the admin:
+
+1. Go to **Admin Panel → Users → ➕ Add User** and create an account for each person.
+2. New self-signups are held as **pending** (no access) until you activate them, so access
+   is admin-controlled out of the box.
+3. To turn off self-signup entirely: **Admin Panel → Settings → General → disable new
+   sign-ups** (or set `ENABLE_SIGNUP=false` in `.env` and run `docker compose up -d`).
 
 ---
 
