@@ -79,6 +79,21 @@ All commands run from this folder.
 
 ---
 
+## Uninstall
+
+To remove DocuSage completely and leave the machine as it was (Docker stays installed):
+
+```bash
+./uninstall.sh
+```
+
+It stops the containers, removes the pulled images, and wipes the data directory
+(models, accounts, manuals). It deletes the data from inside a throwaway container, so it
+works **without `sudo`** even though some files are root-owned. Add `--yes` to skip the
+confirmation prompt.
+
+---
+
 ## Tuning & scaling (optional, later)
 
 - **Bigger/better answers:** edit `GENERATION_MODEL` in `.env` (e.g. `qwen2.5:14b` or
@@ -99,6 +114,7 @@ All commands run from this folder.
 | File | Purpose |
 |---|---|
 | `install.sh` | The one-command interactive installer (Linux) |
+| `uninstall.sh` | Clean removal — containers, images, and all data (no sudo needed) |
 | `docker-compose.yml` | The full stack, with all RAG settings pre-configured |
 | `docker-compose.gpu.yml` | GPU override, layered on automatically when you choose GPU |
 | `.env.example` | Default settings template |

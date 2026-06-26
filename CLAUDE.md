@@ -23,6 +23,7 @@ is no admin-UI configuration step.
 | File | Purpose |
 |---|---|
 | `install.sh` | Interactive one-command Linux installer (prompts: GPU / port / data dir) |
+| `uninstall.sh` | Clean removal — containers, images, and bind-mounted data (deletes root-owned data via a throwaway container, so no host sudo) |
 | `docker-compose.yml` | The full stack with all settings baked in as env vars |
 | `docker-compose.gpu.yml` | NVIDIA override, layered on when GPU is selected |
 | `.env.example` | Settings template; `install.sh` writes the real `.env` |
