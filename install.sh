@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # DocuSage — one-command installer for a self-hosted RAG over PDF user manuals.
-# Linux only. Asks three questions, then brings the whole stack up and pulls the models.
+# Linux only. Asks a few questions, then brings the whole stack up and pulls the models.
 #
 #   ./install.sh
 #
@@ -13,6 +13,7 @@ cd "$(dirname "$(readlink -f "$0")")"
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
 info() { printf '  %s\n' "$1"; }
 err()  { printf '\033[31mError:\033[0m %s\n' "$1" >&2; }
+warn() { printf '\033[33mWarning:\033[0m %s\n' "$1" >&2; }
 
 bold "=============================================="
 bold " DocuSage — RAG over your PDF user manuals"
@@ -25,13 +26,19 @@ if [ "$(uname -s)" != "Linux" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 1. Three setup questions (press Enter to accept the default).
+# 1. Setup questions (press Enter to accept the default).
 # ---------------------------------------------------------------------------
 
-# GPU — default the answer based on whether an NVIDIA GPU is detected.
+# GPU — default the answer based on whether an NVIDIA GPU is detected. Also read the
+# total VRAM so we can recommend a sensible default answer model below.
+GPU_VRAM_MB=0
 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
   GPU_DEFAULT="y"
-  info "An NVIDIA GPU was detected."
+  # Sum VRAM across all GPUs (Ollama can split a model across them); nvidia-smi prints
+  # one value per line, so awk totals them and prints 0 if there's no output.
+  GPU_VRAM_MB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | awk '{s+=$1} END{print s+0}')"
+  [ -z "$GPU_VRAM_MB" ] && GPU_VRAM_MB=0
+  info "An NVIDIA GPU was detected (${GPU_VRAM_MB} MiB VRAM total)."
 else
   GPU_DEFAULT="n"
   info "No NVIDIA GPU detected (will run on CPU)."
@@ -39,6 +46,43 @@ fi
 read -r -p "Use GPU acceleration? [${GPU_DEFAULT}] " USE_GPU
 USE_GPU="${USE_GPU:-$GPU_DEFAULT}"
 case "$USE_GPU" in [Yy]*) USE_GPU="y";; *) USE_GPU="n";; esac
+
+# Answer model — both are Hebrew-specialized models from Dicta. Recommend DictaLM 3.0
+# (24B) only when a big GPU is present; otherwise default to the light DictaLM 2.0 (7B).
+if [ "$USE_GPU" = "y" ] && [ "${GPU_VRAM_MB:-0}" -ge 22000 ]; then
+  MODEL_DEFAULT="2"
+else
+  MODEL_DEFAULT="1"
+fi
+echo
+bold "Which Hebrew answer model? (both are Hebrew-specialized, by Dicta)"
+info "  1) DictaLM 2.0  — 7B.  Min: ~8 GB RAM (CPU) or ~6 GB VRAM. Fast; runs on almost anything."
+info "  2) DictaLM 3.0  — 24B. Min: a GPU with ~24 GB VRAM (e.g. RTX 3090/4090, A6000). Best quality."
+read -r -p "Model [${MODEL_DEFAULT}] " MODEL_CHOICE
+MODEL_CHOICE="${MODEL_CHOICE:-$MODEL_DEFAULT}"
+case "$MODEL_CHOICE" in
+  2) GENERATION_MODEL="dicta-il/DictaLM-3.0-24B-Thinking"; MODEL_LABEL="DictaLM 3.0 (24B)";;
+  *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct";    MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1";;
+esac
+
+# Warn if DictaLM 3.0 was chosen on hardware that probably can't run it well.
+if [ "$MODEL_CHOICE" = "2" ]; then
+  WARN=""
+  if [ "$USE_GPU" != "y" ]; then
+    WARN="DictaLM 3.0 (24B) without GPU acceleration will be extremely slow."
+  elif [ "${GPU_VRAM_MB:-0}" -gt 0 ] && [ "${GPU_VRAM_MB:-0}" -lt 22000 ]; then
+    WARN="Detected only ${GPU_VRAM_MB} MiB VRAM total; DictaLM 3.0 (24B) typically needs ~24 GB and may not fit."
+  fi
+  if [ -n "$WARN" ]; then
+    warn "${WARN}"
+    read -r -p "Continue with DictaLM 3.0 anyway? [y/N] " CONFIRM
+    case "$CONFIRM" in
+      [Yy]*) ;;
+      *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct"; MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1"
+         info "Using DictaLM 2.0 instead.";;
+    esac
+  fi
+fi
 
 # Web UI port.
 read -r -p "Port for the web interface? [3000] " WEBUI_PORT
@@ -50,6 +94,7 @@ DATA_DIR="${DATA_DIR:-./data}"
 
 echo
 info "GPU acceleration : ${USE_GPU}"
+info "Answer model     : ${MODEL_LABEL}  (${GENERATION_MODEL})"
 info "Web UI port      : ${WEBUI_PORT}"
 info "Data directory   : ${DATA_DIR}"
 echo
@@ -101,9 +146,10 @@ fi
 # 3. Write .env from the template + answers.
 # ---------------------------------------------------------------------------
 cp .env.example .env
-# Substitute the two answered values; everything else keeps its template default.
+# Substitute the answered values; everything else keeps its template default.
 sed -i "s|^WEBUI_PORT=.*|WEBUI_PORT=${WEBUI_PORT}|" .env
 sed -i "s|^DATA_DIR=.*|DATA_DIR=${DATA_DIR}|" .env
+sed -i "s|^GENERATION_MODEL=.*|GENERATION_MODEL=${GENERATION_MODEL}|" .env
 
 # Persist the GPU choice as the default compose file set, so plain `docker compose`
 # commands (and re-runs of this script) keep using the GPU override.

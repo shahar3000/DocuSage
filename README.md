@@ -4,12 +4,18 @@ DocuSage is a self-hosted system that lets your team ask questions in plain lang
 against a collection of **PDF user manuals** and get answers **with citations** back to
 the exact page/section. Everything runs locally — no documents leave your network.
 
-It bundles three containers, pre-wired so there's nothing to configure:
+It is tuned for **Hebrew and English**: the default answer model is Hebrew-specialized
+(DictaLM, by Dicta) and the embeddings are multilingual, so manuals and questions in
+either language work well.
+
+It bundles a pre-wired Docker Compose stack, so there's nothing to configure:
 
 - **Ollama** — runs the local AI model and the embeddings, on your hardware.
 - **Open WebUI** — the web chat interface, with user accounts and an admin panel.
 - **Docling** — a layout-aware PDF reader that correctly handles tables, multi-column
   pages, and diagrams (the part most manuals depend on).
+
+(A one-shot helper container downloads the AI models on first run, then exits.)
 
 ---
 
@@ -39,10 +45,18 @@ cd DocuSage
 ```
 
 - It may ask for **your password** the first time — that's it installing Docker. Normal.
-- Then it asks **three questions**. Just **press Enter** for each default, or:
+- Then it asks **a few questions**. Just **press Enter** for each default, or:
   1. **Use GPU acceleration?** — type `y` if the machine has an NVIDIA GPU, otherwise `n`.
-  2. **Port for the web interface?** — `3000` is fine.
-  3. **Where to store data?** — `./data` is fine.
+  2. **Which Hebrew answer model?** — both are Hebrew-specialized (by Dicta):
+     - **`1` DictaLM 2.0** (7B) — needs ~8 GB RAM on CPU, or ~6 GB VRAM. Fast; runs on almost
+       anything. *(the default on most machines)*
+     - **`2` DictaLM 3.0** (24B) — needs a GPU with ~24 GB VRAM (e.g. RTX 3090/4090, A6000).
+       Best Hebrew quality.
+
+     The installer suggests `2` only when it detects a big-enough GPU, and warns you if you
+     pick it on weaker hardware.
+  3. **Port for the web interface?** — `3000` is fine.
+  4. **Where to store data?** — `./data` is fine.
 
 > If you get `permission denied`, run `chmod +x install.sh` once, then `./install.sh` again.
 
@@ -122,9 +136,10 @@ confirmation prompt.
 
 ## Tuning & scaling (optional, later)
 
-- **Bigger/better answers:** edit `GENERATION_MODEL` in `.env` (e.g. `qwen2.5:14b` or
-  `qwen2.5:32b` if you have the GPU memory), then `docker compose up -d`. The new model is
-  pulled automatically.
+- **Change the answer model:** edit `GENERATION_MODEL` in `.env` to switch between
+  `aminadaven/dictalm2.0-instruct` (DictaLM 2.0, 7B) and `dicta-il/DictaLM-3.0-24B-Thinking`
+  (DictaLM 3.0, 24B — needs ~24 GB VRAM), or any other Ollama model, then
+  `docker compose up -d`. The new model is pulled automatically.
 - **More manuals (hundreds–thousands):** the default vector store handles a small corpus
   well. To grow, switch Open WebUI's `VECTOR_DB` to pgvector/Qdrant/Milvus (add the service
   to `docker-compose.yml`) and re-index.
