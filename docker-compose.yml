@@ -19,7 +19,8 @@ services:
     expose:
       - "11434"
 
-  # One-shot: waits for Ollama, pulls the embedding + generation models, then exits 0.
+  # One-shot: waits for Ollama, pulls the embedding + generation models, then exits 0 —
+  # or exits non-zero (which fails the install) if a model pull fails.
   # This is what makes the install "zero manual model pulling".
   model-init:
     image: ollama/ollama:latest
@@ -35,9 +36,9 @@ services:
         echo "Waiting for Ollama to be ready...";
         until ollama list >/dev/null 2>&1; do sleep 2; done;
         echo "Pulling embedding model: ${EMBEDDING_MODEL}";
-        ollama pull "${EMBEDDING_MODEL}";
+        ollama pull "${EMBEDDING_MODEL}" || { echo "ERROR: failed to pull ${EMBEDDING_MODEL}"; exit 1; };
         echo "Pulling generation model: ${GENERATION_MODEL}";
-        ollama pull "${GENERATION_MODEL}";
+        ollama pull "${GENERATION_MODEL}" || { echo "ERROR: failed to pull ${GENERATION_MODEL} (check the model tag exists on the Ollama registry)"; exit 1; };
         echo "All models ready.";
     restart: "no"
 

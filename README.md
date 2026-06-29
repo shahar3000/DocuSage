@@ -171,7 +171,7 @@ confirmation prompt.
 ## Tuning & scaling (optional, later)
 
 - **Change the answer model:** edit `GENERATION_MODEL` in `.env` to switch between
-  `aminadaven/dictalm2.0-instruct` (DictaLM 2.0, 7B) and `dicta-il/DictaLM-3.0-24B-Thinking`
+  `aminadaven/dictalm2.0-instruct:q4_K_M` (DictaLM 2.0, 7B) and `dicta-il/DictaLM-3.0-24B-Thinking:q4_K_M`
   (DictaLM 3.0, 24B — needs ~24 GB VRAM), or any other Ollama model, then
   `docker compose up -d`. The new model is pulled automatically.
 - **More manuals (hundreds–thousands):** the default vector store handles a small corpus

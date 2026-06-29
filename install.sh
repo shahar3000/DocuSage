@@ -61,8 +61,8 @@ info "  2) DictaLM 3.0  — 24B. Min: a GPU with ~24 GB VRAM (e.g. RTX 3090/4090
 read -r -p "Model [${MODEL_DEFAULT}] " MODEL_CHOICE
 MODEL_CHOICE="${MODEL_CHOICE:-$MODEL_DEFAULT}"
 case "$MODEL_CHOICE" in
-  2) GENERATION_MODEL="dicta-il/DictaLM-3.0-24B-Thinking"; MODEL_LABEL="DictaLM 3.0 (24B)";;
-  *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct";    MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1";;
+  2) GENERATION_MODEL="dicta-il/DictaLM-3.0-24B-Thinking:q4_K_M"; MODEL_LABEL="DictaLM 3.0 (24B)";;
+  *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct:q4_K_M";    MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1";;
 esac
 
 # Warn if DictaLM 3.0 was chosen on hardware that probably can't run it well.
@@ -78,7 +78,7 @@ if [ "$MODEL_CHOICE" = "2" ]; then
     read -r -p "Continue with DictaLM 3.0 anyway? [y/N] " CONFIRM
     case "$CONFIRM" in
       [Yy]*) ;;
-      *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct"; MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1"
+      *) GENERATION_MODEL="aminadaven/dictalm2.0-instruct:q4_K_M"; MODEL_LABEL="DictaLM 2.0 (7B)"; MODEL_CHOICE="1"
          info "Using DictaLM 2.0 instead.";;
     esac
   fi
