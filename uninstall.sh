@@ -44,19 +44,34 @@ if [ "$ASSUME_YES" != "yes" ]; then
   if [ "$REPLY" != "yes" ]; then echo "Aborted."; exit 0; fi
 fi
 
-bold "Stopping containers and removing images..."
+bold "Stopping containers and removing the network..."
 # Reads COMPOSE_FILE from .env (so the GPU override, if any, is included).
-$COMPOSE down --rmi all --remove-orphans || true
+# Keep images for now — we reuse one below to wipe data without pulling anything.
+$COMPOSE down --remove-orphans || true
 
 # Wipe the data directory. Container-written files are root-owned, so delete them from
 # inside a throwaway root container — this avoids needing host 'sudo'. Nested root-owned
 # subdirectories (e.g. Open WebUI's vector store) can't be removed by the host user otherwise.
+# Reuse an image that's already on the host so the uninstaller never pulls from the network.
 if [ -d "$DATA_DIR" ]; then
   ABS_DATA="$(cd "$DATA_DIR" && pwd)"
   bold "Removing data in ${ABS_DATA}..."
-  $DOCKER run --rm -v "${ABS_DATA}:/d" alpine sh -c 'rm -rf /d/* /d/.[!.]* /d/..?* 2>/dev/null || true'
+  CLEAN_IMG=""
+  for img in ollama/ollama:latest ghcr.io/open-webui/open-webui:main \
+             quay.io/docling-project/docling-serve-cpu:latest alpine:latest busybox:latest; do
+    if $DOCKER image inspect "$img" >/dev/null 2>&1; then CLEAN_IMG="$img"; break; fi
+  done
+  PULLED="no"
+  [ -z "$CLEAN_IMG" ] && { CLEAN_IMG="alpine:latest"; PULLED="yes"; }
+  $DOCKER run --rm --entrypoint /bin/sh -v "${ABS_DATA}:/d" "$CLEAN_IMG" \
+    -c 'rm -rf /d/* /d/.[!.]* /d/..?* 2>/dev/null || true'
+  # If we had to pull a helper image as a last resort, remove it again.
+  [ "$PULLED" = "yes" ] && $DOCKER rmi "$CLEAN_IMG" >/dev/null 2>&1 || true
   rmdir "$ABS_DATA" 2>/dev/null || info "(left '${ABS_DATA}' in place — not empty)"
 fi
+
+bold "Removing pulled images..."
+$COMPOSE down --rmi all --remove-orphans || true
 
 # Remove generated config (keep the template .env.example).
 rm -f .env
