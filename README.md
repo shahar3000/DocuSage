@@ -96,6 +96,40 @@ Once you're logged in as the admin:
    indexed automatically. You can add more manuals or new product collections **anytime**,
    no restart needed.
 
+## Scanned manuals & OCR (admin)
+
+Most product manuals are **digital PDFs** — the text is real and selectable, so DocuSage
+reads them directly and fast. (To check a file: open it and try to highlight a sentence.
+If you can select the text, it's digital.)
+
+**OCR** (Optical Character Recognition) reads text out of *images*. It's only needed for
+**scanned or photographed** manuals — where the page is a picture and you *cannot* select
+the text. DocuSage keeps OCR **off by default**, because it's slow (several minutes per
+document) and adds nothing for digital PDFs. Docling still extracts the text, tables, and
+layout from digital PDFs with OCR off — OCR is only the fallback for image-only pages.
+
+If you ever need to add a **scanned** manual, the admin can turn OCR on from the web
+interface — no terminal needed. It is a **global** switch (it affects every upload while
+it's on, and there's no per-file option yet), so the flow is: turn it on, upload the
+scanned file, turn it back off.
+
+1. Go to **Admin Panel → Settings → Documents**. Under the document-extraction (Docling)
+   settings, find the **Docling parameters** field — a box containing text that starts with
+   `{"do_ocr": ...}`.
+2. **Turn OCR on:** replace the contents of that box with the following, then **Save**:
+
+   `{"do_ocr": true, "do_table_structure": true, "table_mode": "accurate"}`
+
+3. **Upload** the scanned manual into its Knowledge collection. This will be slow (a few
+   minutes per document) — that's expected with OCR on.
+4. **Turn OCR back off** when you're done: replace the box with the following and **Save**:
+
+   `{"do_ocr": false, "do_table_structure": true, "table_mode": "accurate"}`
+
+Only the `true` / `false` differs between the two. This setting is saved in the app and
+stays as you left it, which is exactly why step 4 matters — leave it on the **off** value
+so uploads stay fast for everyone.
+
 ## Asking questions
 
 In a chat, type `#` to attach the relevant product's Knowledge collection, then ask your

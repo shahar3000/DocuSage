@@ -81,9 +81,12 @@ services:
       # --- RAG: layout-aware document extraction via Docling ---
       - CONTENT_EXTRACTION_ENGINE=docling
       - DOCLING_SERVER_URL=http://docling:5001
-      # Auto-OCR: digital/text PDFs use their text layer (fast); only image/scanned pages
-      # are OCR'd. For an all-digital manual set, set "do_ocr": false for ~10x faster ingest.
-      - 'DOCLING_PARAMS={"do_ocr": true, "force_ocr": false}'
+      # OCR is OFF: these manuals are born-digital (they have a real text layer), so OCR
+      # found nothing yet ran on every page — the dominant ingest cost (~8 min/doc on CPU).
+      # Docling still does its real job here: reading-order, multi-column, and TABLE
+      # extraction from the embedded text layer. Only set "do_ocr": true if you add SCANNED
+      # (image-only) PDFs, which genuinely need OCR.
+      - 'DOCLING_PARAMS={"do_ocr": false, "do_table_structure": true, "table_mode": "accurate"}'
 
       # --- Chunking tuned for technical manuals ---
       - CHUNK_SIZE=1000
