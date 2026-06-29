@@ -65,11 +65,17 @@ plus the AI models), so it can take **10–20 minutes**. When it's done it print
 
 ```
 On this machine : http://localhost:3000
-From the team   : http://192.168.x.x:3000
+From the team   : http://<server-ip>:3000
 ```
 
-**5. Open that link in a web browser.** Use the `localhost` link on the machine itself, or
-the `192.168.x.x` link from another computer on the same network.
+The installer fills in `<server-ip>` with this machine's actual address on your network
+(it could look like `192.168.x.x`, `10.x.x.x`, `172.x.x.x`, or a hostname — it depends on
+your network).
+
+**5. Open that link in a web browser.** Use the `localhost` link on the machine itself, and
+the address the installer printed from any other computer on the same network. If that
+address doesn't work for teammates, ask whoever manages your network for the server's
+reachable IP or hostname.
 
 **6. Create the first account.** The **first** person to sign up automatically becomes the
 **admin**. Continue with the next sections to add your team and your manuals.
